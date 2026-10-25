@@ -17,6 +17,8 @@ jobs:
       with:
         submodules: true
         fetch-depth: 0
+    - name: Apply SDK patch for 2.50
+      run: git -C deps/red4ext.sdk apply ../../red4ext.sdk-game-2.50.patch
     - uses: ilammy/msvc-dev-cmd@v1.12.1
       with:
         arch: amd64
