@@ -1,16 +1,9 @@
-@replaceMethod(SingleplayerMenuGameController)
+// Wrap instead of replace so the vanilla list (including the 2.5 mod.io entry)
+// and items other mods add are kept. Mod Settings is appended at the end.
+@wrapMethod(SingleplayerMenuGameController)
 private func PopulateMenuItemList() -> Void {
-  if this.m_savesCount > 0 {
-    this.AddMenuItem(GetLocalizedText("UI-ScriptExports-Continue0"), PauseMenuAction.QuickLoad);
-  };
-  this.AddMenuItem(GetLocalizedText("UI-ScriptExports-NewGame0"), n"OnNewGame");
-  this.AddMenuItem(GetLocalizedText("UI-ScriptExports-LoadGame0"), n"OnLoadGame");
-  this.AddMenuItem(GetLocalizedText("UI-Labels-Settings"), n"OnSwitchToSettings");
+  wrappedMethod();
   this.AddMenuItem(GetLocalizedText("UI-Labels-ModSettings"), n"OnSwitchToModSettings");
-  this.AddMenuItem(GetLocalizedText("UI-Labels-Credits"), n"OnCreditsPicker");
-  if TrialHelper.IsInPS5TrialMode() {
-    this.AddMenuItem(GetLocalizedText("UI-Notifications-Ps5TrialBuyMenuItem"), n"OnBuyGame");
-  };
   this.m_menuListController.Refresh();
   this.SetCursorOverWidget(inkCompoundRef.GetWidgetByIndex(this.m_menuList, 0));
 }
