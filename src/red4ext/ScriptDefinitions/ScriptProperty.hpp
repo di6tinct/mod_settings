@@ -241,7 +241,10 @@ struct ScriptProperty : ScriptDefinition {
   RED4ext::HashMap<RED4ext::CName, RED4ext::CString> runtimeProperties;
   ScriptType *type;
 };
-RED4EXT_ASSERT_SIZE(ScriptProperty, 0x98);
-RED4EXT_ASSERT_OFFSET(ScriptProperty, runtimeProperties, 0x60);
+RED4EXT_ASSERT_SIZE(ScriptProperty, 0xC0);
+RED4EXT_ASSERT_OFFSET(ScriptProperty, parent, 0x48);
+RED4EXT_ASSERT_OFFSET(ScriptProperty, defaultValues, 0x68);
+RED4EXT_ASSERT_OFFSET(ScriptProperty, runtimeProperties, 0x88);
+RED4EXT_ASSERT_OFFSET(ScriptProperty, type, 0xB8);
 
 }
