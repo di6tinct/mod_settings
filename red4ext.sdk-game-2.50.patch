@@ -1,0 +1,569 @@
+diff --git a/cmake/GameVersions.json b/cmake/GameVersions.json
+index 09c98526..603f8c8b 100644
+--- a/cmake/GameVersions.json
++++ b/cmake/GameVersions.json
+@@ -22,5 +22,6 @@
+   "3.0.78.41888" : "2.20",
+   "3.0.78.57301" : "2.21",
+   "3.0.80.33925" : "2.30",
+-  "3.0.80.51928" : "2.31"
++  "3.0.80.51928" : "2.31",
++  "3.0.88.46235" : "2.50"
+ }
+\ No newline at end of file
+diff --git a/include/RED4ext/Api/v0/Runtime.hpp b/include/RED4ext/Api/v0/Runtime.hpp
+index 65f8f26d..f774bd68 100644
+--- a/include/RED4ext/Api/v0/Runtime.hpp
++++ b/include/RED4ext/Api/v0/Runtime.hpp
+@@ -36,6 +36,7 @@
+ #define RED4EXT_V0_RUNTIME_2_21 RED4EXT_V0_FILEVER(3, 0, 78, 57301)
+ #define RED4EXT_V0_RUNTIME_2_30 RED4EXT_V0_FILEVER(3, 0, 80, 33925)
+ #define RED4EXT_V0_RUNTIME_2_31 RED4EXT_V0_FILEVER(3, 0, 80, 51928)
++#define RED4EXT_V0_RUNTIME_2_50 RED4EXT_V0_FILEVER(3, 0, 88, 46235)
+ 
+ /**
+  * @brief Supports all game versions.
+@@ -48,4 +49,4 @@
+ /*
+  * @brief The latest game version.
+  */
+-#define RED4EXT_V0_RUNTIME_LATEST RED4EXT_V0_RUNTIME_2_31
++#define RED4EXT_V0_RUNTIME_LATEST RED4EXT_V0_RUNTIME_2_50
+diff --git a/include/RED4ext/Buffer-inl.hpp b/include/RED4ext/Buffer-inl.hpp
+index 6a3157ed..5c9a7008 100644
+--- a/include/RED4ext/Buffer-inl.hpp
++++ b/include/RED4ext/Buffer-inl.hpp
+@@ -118,11 +118,11 @@ RED4EXT_INLINE RED4ext::SharedPtr<RED4ext::DeferredDataBufferToken> RED4ext::Def
+ 
+ RED4EXT_INLINE RED4ext::SharedPtr<RED4ext::DeferredDataBufferCopyToken> RED4ext::DeferredDataBuffer::LoadCopyAsync()
+ {
+-    using LoadBufferRefAsync_t = void* (*)(DeferredDataBuffer*, SharedPtr<DeferredDataBufferCopyToken>*, int8_t);
++    using LoadBufferRefAsync_t = void* (*)(DeferredDataBuffer*, SharedPtr<DeferredDataBufferCopyToken>*, int8_t, bool);
+     static UniversalRelocFunc<LoadBufferRefAsync_t> func(Detail::AddressHashes::DeferredDataBuffer_LoadRefAsync);
+ 
+     SharedPtr<DeferredDataBufferCopyToken> token;
+-    func(this, &token, 0);
++    func(this, &token, 0, false);
+ 
+     return token;
+ }
+diff --git a/include/RED4ext/Callback.hpp b/include/RED4ext/Callback.hpp
+index 2f9c41d1..4b78ab19 100644
+--- a/include/RED4ext/Callback.hpp
++++ b/include/RED4ext/Callback.hpp
+@@ -9,7 +9,7 @@
+ 
+ namespace RED4ext
+ {
+-constexpr size_t DefaultFixedCallbackBufferSize = 32;
++constexpr size_t DefaultFixedCallbackBufferSize = 64;
+ constexpr size_t DefaultFlexCallbackBufferSize = 24;
+ 
+ template<typename R, typename... Args>
+diff --git a/include/RED4ext/Detail/AddressHashes.hpp b/include/RED4ext/Detail/AddressHashes.hpp
+index ac04e1f4..e77e677e 100644
+--- a/include/RED4ext/Detail/AddressHashes.hpp
++++ b/include/RED4ext/Detail/AddressHashes.hpp
+@@ -100,6 +100,7 @@ constexpr std::uint32_t CRTTISystem_Get = 0x4A610F64;
+ 
+ #pragma region CStack
+ constexpr std::uint32_t CStack_vtbl = 0x349A0EE1;
++constexpr std::uint32_t CStackFrame_dtor = 0x952E09D3;
+ #pragma endregion
+ 
+ #pragma region CString
+@@ -151,7 +152,7 @@ constexpr std::uint32_t ISerializable_sub_30 = 0x6D63649;
+ constexpr std::uint32_t ISerializable_sub_40 = 0x88B30FF9;
+ constexpr std::uint32_t ISerializable_sub_78 = 0xA1D93993;
+ constexpr std::uint32_t ISerializable_sub_A0 = 0xED221B32;
+-constexpr std::uint32_t ISerializable_sub_C0 = 0x80201C35;
++constexpr std::uint32_t ISerializable_sub_C0 = 0xDBE91251;
+ constexpr std::uint32_t ISerializable_Counter = 2630817091;
+ #pragma endregion
+ 
+@@ -186,6 +187,7 @@ constexpr std::uint32_t Memory_Vault_ReallocAligned = 0x56961AA9;
+ constexpr std::uint32_t Memory_Vault_Free = 0x33421332;
+ constexpr std::uint32_t Memory_Vault_Unk1 = 0x19EC1367;
+ constexpr std::uint32_t Memory_PoolStorage_OOM = 0xD54F163A;
++constexpr std::uint32_t Memory_PoolScript_vtbl = 0x600407D7;
+ #pragma endregion
+ 
+ #pragma region OpcodeHandlers
+@@ -230,7 +232,7 @@ constexpr std::uint32_t ResourceToken_dtor = 0x9A5F0A0D;
+ constexpr std::uint32_t ResourceToken_Fetch = 0x8C0918CA;
+ constexpr std::uint32_t ResourceToken_OnLoaded = 0xEB4B25AB;
+ constexpr std::uint32_t ResourceToken_CancelUnk38 = 0xF6E20CE6;
+-constexpr std::uint32_t ResourceToken_DestructUnk38 = 0x95831FEE;
++constexpr std::uint32_t ResourceToken_DestructUnk38 = 0xE4551DBE;
+ #pragma endregion
+ 
+ #pragma region TTypedClass
+@@ -243,13 +245,13 @@ constexpr std::uint32_t TweakDB_CreateRecord = 0x3201127A;
+ #pragma endregion
+ 
+ #pragma region UpdateRegistrar
+-constexpr std::uint32_t UpdateRegistrar_RegisterGroupUpdate = 0xFD914605;
+-constexpr std::uint32_t UpdateRegistrar_RegisterBucketUpdate = 0x192F4EA2;
++constexpr std::uint32_t UpdateRegistrar_RegisterGroupUpdate = 0xFDDF4607;
++constexpr std::uint32_t UpdateRegistrar_RegisterBucketUpdate = 0x197D4EA4;
+ #pragma endregion
+ 
+ #pragma region DeferredDataBuffer
+ constexpr std::uint32_t DeferredDataBuffer_LoadAsync = 4125893577;
+-constexpr std::uint32_t DeferredDataBuffer_LoadRefAsync = 1459046115;
++constexpr std::uint32_t DeferredDataBuffer_LoadRefAsync = 3857663888;
+ #pragma endregion
+ 
+ #pragma region LaunchParameters
+diff --git a/include/RED4ext/GameEngine.hpp b/include/RED4ext/GameEngine.hpp
+index ff22d1f4..9986d2f5 100644
+--- a/include/RED4ext/GameEngine.hpp
++++ b/include/RED4ext/GameEngine.hpp
+@@ -174,54 +174,60 @@ struct CBaseEngine
+     int16_t unk5A;                             // 5A
+     int32_t interopStartingPort;               // 5C
+     int64_t unk60;                             // 60
+-    int64_t unk68;                             // 68
+-    CString scriptsCompilationErrors;          // 70
+-    DynArray<CString> scriptsValidationErrors; // 90
+-    int64_t unkA0;                             // A0
+-    audio::Thing* audioThing;                  // A8
+-    int64_t unkB0;                             // B0
+-    int64_t unkB8;                             // B8
+-    uint8_t padC0[0x10];                       // C0
+-    UnkD0* unkD0;                              // D0
+-    double unkD8;                              // D8
+-    double unkE0;                              // E0
+-    int32_t unkE8;                             // E8
+-    int64_t unkF0;                             // F0
+-    int64_t unkF8;                             // F8
+-    int64_t unk100;                            // 100
+-    volatile EEngineState engineState;         // 108
+-    int32_t unk10C;                            // 10C
+-    int32_t unk110;                            // 110
+-    Unk108* unk118;                            // 118
+-    Unk110 unk120;                             // 120
+-    CString buildString;                       // 130
+-    CString scriptsBlobPath;                   // 150
+-    int32_t unk170;                            // 170
+-    int8_t unk174;                             // 174
+-    int64_t unk178;                            // 178
+-    int64_t unk180;                            // 180
+-    int64_t unk188;                            // 188
+-    int64_t unk190;                            // 190
+-    int8_t unk198[178];                        // 198
+-    int32_t unk24C;                            // 24C
+-    int8_t unk250[64];                         // 250
+-    DynArray<void*> unk290;                    // 290
+-    DynArray<void*> unk2A0;                    // 2A0
+-    int64_t unk2B0;                            // 2B0
+-    int64_t unk2B8;                            // 2B8
+-    int64_t unk2C0;                            // 2C0
+-    int64_t unk2C8;                            // 2C8
+-    int32_t unk2D0;                            // 2D0
+-    bool isEP1;                                // 2D4 - IsEP1()
+-    int64_t unk2D8;                            // 2D8
+-    int64_t unk2E0;                            // 2E0
++    DynArray<void*> unk68;                     // 68 - DynArray<red::AbsolutePath>, script mod blobs (2.5)
++    int64_t unk78;                             // 78 (2.5)
++    int64_t unk80;                             // 80 (2.5)
++    int64_t unk88;                             // 88 (2.5)
++    CString scriptsCompilationErrors;          // 90
++    DynArray<CString> scriptsValidationErrors; // B0
++    int64_t unkA0;                             // C0
++    audio::Thing* audioThing;                  // C8
++    int64_t unkB0;                             // D0
++    int64_t unkB8;                             // D8
++    uint8_t padC0[0x10];                       // E0
++    UnkD0* unkD0;                              // F0
++    double unkD8;                              // F8
++    double unkE0;                              // 100
++    int32_t unkE8;                             // 108
++    int64_t unkF0;                             // 110
++    int64_t unkF8;                             // 118
++    int64_t unk100;                            // 120
++    volatile EEngineState engineState;         // 128
++    int32_t unk10C;                            // 12C
++    int32_t unk110;                            // 130
++    Unk108* unk118;                            // 138
++    Unk110 unk120;                             // 140
++    CString buildString;                       // 150
++    CString scriptsBlobPath;                   // 170
++    int32_t unk170;                            // 190
++    int8_t unk174;                             // 194
++    int64_t unk178;                            // 198
++    int64_t unk180;                            // 1A0
++    int64_t unk188;                            // 1A8
++    int64_t unk190;                            // 1B0
++    int8_t unk198[178];                        // 1B8
++    int32_t unk24C;                            // 26C
++    int8_t unk250[64];                         // 270
++    DynArray<void*> unk290;                    // 2B0
++    DynArray<void*> unk2A0;                    // 2C0
++    int64_t unk2B0;                            // 2D0
++    int64_t unk2B8;                            // 2D8
++    int64_t unk2C0;                            // 2E0
++    int64_t unk2C8;                            // 2E8
++    int32_t unk2D0;                            // 2F0
++    bool isEP1;                                // 2F4 - IsEP1()
++    CString unk2F8Path;                        // 2F8 - red::AbsolutePath (2.5)
++    int64_t unk2D8;                            // 318
++    int64_t unk2E0;                            // 320
+ };
+-RED4EXT_ASSERT_SIZE(CBaseEngine, 0x2E8);
++RED4EXT_ASSERT_SIZE(CBaseEngine, 0x328);
+ RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsLoaded, 0x54);
+-RED4EXT_ASSERT_OFFSET(CBaseEngine, unkD0, 0xD0);
+-RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsValidationErrors, 0x90);
+-RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsBlobPath, 0x150);
+-RED4EXT_ASSERT_OFFSET(CBaseEngine, isEP1, 0x2D4);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsCompilationErrors, 0x90);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsValidationErrors, 0xB0);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, unkD0, 0xF0);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, engineState, 0x128);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, scriptsBlobPath, 0x170);
++RED4EXT_ASSERT_OFFSET(CBaseEngine, isEP1, 0x2F4);
+ 
+ struct BaseGameEngine : CBaseEngine
+ {
+@@ -237,9 +243,9 @@ struct BaseGameEngine : CBaseEngine
+     // LoadTweakDB, Blackboard, EnumerateWorlds, PSClassBindings
+     virtual void sub_E0(uint64_t a2, uint64_t a3, uint64_t a4) override;
+ 
+-    int64_t unk2D8;          // 2D8
++    int64_t unk2E8;          // 328
+ };
+-RED4EXT_ASSERT_SIZE(BaseGameEngine, 0x2F0);
++RED4EXT_ASSERT_SIZE(BaseGameEngine, 0x330);
+ // RED4EXT_ASSERT_OFFSET(BaseGameEngine, watchdogThread, 0x2D8);
+ 
+ struct CGameFramework
+@@ -357,23 +363,23 @@ struct CGameEngine : BaseGameEngine
+     /// @pattern 48 89 5C 24 18 48 89 6C 24 20 56 48 83 EC 60 48 8B F1 48 8B DA 0F B6 4A 32 E8 A2 64 22 00 48 8B
+     // static void __fastcall InitializeGameFramework(uint64_t * a1, uint64_t a2);
+ 
+-    int64_t unk2F0;                       // 2F0
+-    int64_t unk2F8;                       // 2F8
+-    int32_t unk300;                       // 300
+-    int32_t unk304;                       // 304
+-    CGameFramework* framework;            // 308
+-    services::GameServices* gameServices; // 310
+-    int64_t unk318;                       // 318
+-    int64_t unk320;                       // 320
+-    int64_t unk328;                       // 328
+-    int64_t unk330;                       // 330
+-    int64_t unk338;                       // 338
+-    int32_t unk340;                       // 340
+-    int64_t unk348;                       // 348
++    int64_t unk2F0;                       // 330
++    int64_t unk2F8;                       // 338
++    int32_t unk300;                       // 340
++    int32_t unk304;                       // 344
++    CGameFramework* framework;            // 348
++    services::GameServices* gameServices; // 350
++    int64_t unk318;                       // 358
++    int64_t unk320;                       // 360
++    int64_t unk328;                       // 368
++    int64_t unk330;                       // 370
++    int64_t unk338;                       // 378
++    int32_t unk340;                       // 380
++    int64_t unk348;                       // 388
+ 
+ };
+-RED4EXT_ASSERT_SIZE(CGameEngine, 0x350);
+-RED4EXT_ASSERT_OFFSET(CGameEngine, framework, 0x308);
++RED4EXT_ASSERT_SIZE(CGameEngine, 0x390);
++RED4EXT_ASSERT_OFFSET(CGameEngine, framework, 0x348);
+ } // namespace RED4ext
+ 
+ #ifdef RED4EXT_HEADER_ONLY
+diff --git a/include/RED4ext/GpuApi/DeviceData.hpp b/include/RED4ext/GpuApi/DeviceData.hpp
+index fa18e9be..6415ddfd 100644
+--- a/include/RED4ext/GpuApi/DeviceData.hpp
++++ b/include/RED4ext/GpuApi/DeviceData.hpp
+@@ -68,32 +68,32 @@ struct SDeviceDataBase
+     SpinLock resourcesSpinLock;                                         // 02F180
+     uint8_t unk2f180[0x5c0ae0 - 0x02f181];                              // 02F181
+     ResourceContainer<SBufferData, 32768> buffers;                      // 5C0AE0
+-    uint8_t unkb40af8[0xc97f20 - 0xb50af0];                             // B50AF0
+-    ResourceContainer<SSwapChainData, 32> swapChains;                   // C97F20
+-    uint8_t unkc99678[0xd1ad80 - 0xc99570];                             // C98028
+-    ResourceContainer<UniquePtr<CommandListContext>, 128> commandLists; // D1AD80
+-    uint8_t unkd1b598[0x13bc240 - 0xd1b690];                            // D1B690
++    uint8_t unkb40af8[0xcebf30 - 0xb50af0];                             // B50AF0
++    ResourceContainer<SSwapChainData, 32> swapChains;                   // CEBF30
++    uint8_t unkc99678[0xd6ed90 - 0xced580];                             // CED580
++    ResourceContainer<UniquePtr<CommandListContext>, 128> commandLists; // D6ED90
++    uint8_t unkd1b598[0x1410250 - 0xd6f6a0];                            // D6F6A0
+ };
+-RED4EXT_ASSERT_SIZE(SDeviceDataBase, 0x13bc240);
++RED4EXT_ASSERT_SIZE(SDeviceDataBase, 0x1410250);
+ RED4EXT_ASSERT_OFFSET(SDeviceDataBase, buffers, 0x5c0ae0);
+-RED4EXT_ASSERT_OFFSET(SDeviceDataBase, swapChains, 0xc97f20);
+-RED4EXT_ASSERT_OFFSET(SDeviceDataBase, commandLists, 0xd1ad80);
++RED4EXT_ASSERT_OFFSET(SDeviceDataBase, swapChains, 0xcebf30);
++RED4EXT_ASSERT_OFFSET(SDeviceDataBase, commandLists, 0xd6ed90);
+ 
+ struct SDeviceData : SDeviceDataBase
+ {
+-    uint8_t unk13bc240[0x13bc4a8 - 0x13bc240];                      // 13BC240
+-    Microsoft::WRL::ComPtr<ID3D12Device> device;                    // 13BC4A8 - Should be 14 but refuses to compile.
+-    uint8_t unk13bc4b0[0x13bc4d0 - 0x13bc4b0];                      // 13BC4B0
+-    Microsoft::WRL::ComPtr<ID3D12CommandQueue> directCommandQueue;  // 13BC4D0
+-    Microsoft::WRL::ComPtr<ID3D12CommandQueue> computeCommandQueue; // 13BC4D8
+-    uint8_t unk13bc4e0[0x13bc540 - 0x13bc4e0];                      // 13BC4E0
+-    Microsoft::WRL::ComPtr<D3D12MA::Allocator> memoryAllocator;     // 13BC540
+-    uint8_t unk13bc4b8[0x1a8f880 - 0x13bc548];                      // 13BC548
++    uint8_t unk13bc240[0x14104a8 - 0x1410250];                      // 1410250
++    Microsoft::WRL::ComPtr<ID3D12Device> device;                    // 14104A8 - Should be 14 but refuses to compile.
++    uint8_t unk13bc4b0[0x14104d0 - 0x14104b0];                      // 14104B0
++    Microsoft::WRL::ComPtr<ID3D12CommandQueue> directCommandQueue;  // 14104D0
++    Microsoft::WRL::ComPtr<ID3D12CommandQueue> computeCommandQueue; // 14104D8
++    uint8_t unk13bc4e0[0x1410540 - 0x14104e0];                      // 14104E0
++    Microsoft::WRL::ComPtr<D3D12MA::Allocator> memoryAllocator;     // 1410540
++    uint8_t unk13bc4b8[0x1ae3b40 - 0x1410548];                      // 1410548
+ };
+-RED4EXT_ASSERT_SIZE(SDeviceData, 0x1a8f880);
+-RED4EXT_ASSERT_OFFSET(SDeviceData, device, 0x13bc4a8);
+-RED4EXT_ASSERT_OFFSET(SDeviceData, directCommandQueue, 0x13bc4d0);
+-RED4EXT_ASSERT_OFFSET(SDeviceData, memoryAllocator, 0x13bc540);
++RED4EXT_ASSERT_SIZE(SDeviceData, 0x1ae3b40);
++RED4EXT_ASSERT_OFFSET(SDeviceData, device, 0x14104a8);
++RED4EXT_ASSERT_OFFSET(SDeviceData, directCommandQueue, 0x14104d0);
++RED4EXT_ASSERT_OFFSET(SDeviceData, memoryAllocator, 0x1410540);
+ 
+ SDeviceData* GetDeviceData();
+ 
+diff --git a/include/RED4ext/RTTISystem.hpp b/include/RED4ext/RTTISystem.hpp
+index c584ba69..01e05cfc 100644
+--- a/include/RED4ext/RTTISystem.hpp
++++ b/include/RED4ext/RTTISystem.hpp
+@@ -66,7 +66,12 @@ struct IRTTISystem
+     virtual CString* GetStringConst(uint32_t aIndex) = 0;         // 128 - Used by StringConst opcode (0x10)
+     virtual void SetStringTable(DynArray<CString>& aStrings) = 0; // 130 - Called by script loader
+ 
+-    virtual ~IRTTISystem() = 0; // 138
++    virtual void sub_138() = 0; // 138 - Added in 2.5
++    virtual void sub_140() = 0; // 140 - Added in 2.5
++    virtual void sub_148() = 0; // 148 - Added in 2.5
++    virtual void sub_150() = 0; // 150 - Added in 2.5
++
++    virtual ~IRTTISystem() = 0; // 158
+ };
+ RED4EXT_ASSERT_SIZE(IRTTISystem, 0x8);
+ 
+diff --git a/include/RED4ext/ResourceLoader-inl.hpp b/include/RED4ext/ResourceLoader-inl.hpp
+index 45eec4d1..e7c8a0e3 100644
+--- a/include/RED4ext/ResourceLoader-inl.hpp
++++ b/include/RED4ext/ResourceLoader-inl.hpp
+@@ -12,14 +12,18 @@ RED4EXT_INLINE RED4ext::ResourceRequest::ResourceRequest(ResourcePath aPath)
+     , unk08(0)
+     , unk10(false)
+     , disablePreInitialization(false)
++    , unk12(false)
+     , disableImports(false)
+     , disablePostLoad(false)
+-    , unk14(false)
+     , unk15(false)
+     , unk16(false)
++    , unk17(false)
++    , unk18(false)
++    , unk19(true)
++    , unk1A{}
+     , archiveHandle(-1)
+-    , unk1C(0)
+-    , unk20(0)
++    , unk24(0)
++    , unk28(0)
+ {
+ }
+ 
+diff --git a/include/RED4ext/ResourceLoader.hpp b/include/RED4ext/ResourceLoader.hpp
+index 62989b53..b3944385 100644
+--- a/include/RED4ext/ResourceLoader.hpp
++++ b/include/RED4ext/ResourceLoader.hpp
+@@ -125,20 +125,25 @@ struct ResourceRequest
+     uint64_t unk08;                // 08
+     bool unk10;                    // 10
+     bool disablePreInitialization; // 11
+-    bool disableImports;           // 12
+-    bool disablePostLoad;          // 13
+-    bool unk14;                    // 14
++    bool unk12;                    // 12
++    bool disableImports;           // 13
++    bool disablePostLoad;          // 14
+     bool unk15;                    // 15
+     bool unk16;                    // 16
+-    int32_t archiveHandle;         // 18
+-    int32_t unk1C;                 // 1C
+-    uint64_t unk20;                // 20
++    bool unk17;                    // 17
++    bool unk18;                    // 18
++    bool unk19;                    // 19 - Defaults to true
++    uint8_t unk1A[0x20 - 0x1A];    // 1A
++    int32_t archiveHandle;         // 20
++    int32_t unk24;                 // 24
++    uint64_t unk28;                // 28
+ };
+-RED4EXT_ASSERT_SIZE(ResourceRequest, 0x28);
++RED4EXT_ASSERT_SIZE(ResourceRequest, 0x30);
+ RED4EXT_ASSERT_OFFSET(ResourceRequest, path, 0x0);
+ RED4EXT_ASSERT_OFFSET(ResourceRequest, disablePreInitialization, 0x11);
+-RED4EXT_ASSERT_OFFSET(ResourceRequest, disablePostLoad, 0x13);
+-RED4EXT_ASSERT_OFFSET(ResourceRequest, archiveHandle, 0x18);
++RED4EXT_ASSERT_OFFSET(ResourceRequest, disableImports, 0x13);
++RED4EXT_ASSERT_OFFSET(ResourceRequest, disablePostLoad, 0x14);
++RED4EXT_ASSERT_OFFSET(ResourceRequest, archiveHandle, 0x20);
+ 
+ struct ResourceLoader
+ {
+diff --git a/include/RED4ext/Scripting/Functions.hpp b/include/RED4ext/Scripting/Functions.hpp
+index 2a182b83..0ffe1066 100644
+--- a/include/RED4ext/Scripting/Functions.hpp
++++ b/include/RED4ext/Scripting/Functions.hpp
+@@ -86,6 +86,10 @@ struct CBaseFunction : IFunction
+     CCompiledCode bytecode;         // 78
+     Flags flags;                    // A8
+     int32_t stackSize;              // AC
++    uint8_t unkB0[0x18];            // B0 - red::Set<uint64_t>, checked by the script call path (2.5)
++    uint8_t unkC8[0x18];            // C8 - red::Set<uint64_t>, checked by the script call path (2.5)
++    int64_t unkE0;                  // E0 (2.5)
++    CBaseFunction* unkE8;           // E8 - Redirect target used by the script call path when set (2.5)
+ 
+ private:
+     using Handler_t = void (*)(ScriptInstance, RED4ext::CStackFrame&, void*, CBaseRTTIType*);
+@@ -94,7 +98,7 @@ private:
+     static Handler_t GetHandler(uint32_t aIndex);
+     bool ExecuteNative(CStack* aStack, CStackFrame& aFrame);
+ };
+-RED4EXT_ASSERT_SIZE(CBaseFunction, 0xB0);
++RED4EXT_ASSERT_SIZE(CBaseFunction, 0xF0);
+ RED4EXT_ASSERT_OFFSET(CBaseFunction, fullName, 0x08);
+ RED4EXT_ASSERT_OFFSET(CBaseFunction, bytecode, 0x78);
+ RED4EXT_ASSERT_OFFSET(CBaseFunction, flags, 0xA8);
+@@ -119,10 +123,10 @@ struct CGlobalFunction : CBaseFunction
+         return memory;
+     }
+ 
+-    uint32_t regIndex; // B0
++    uint32_t regIndex; // F0
+ };
+-RED4EXT_ASSERT_SIZE(CGlobalFunction, 0xB8);
+-RED4EXT_ASSERT_OFFSET(CGlobalFunction, regIndex, 0xB0);
++RED4EXT_ASSERT_SIZE(CGlobalFunction, 0xF8);
++RED4EXT_ASSERT_OFFSET(CGlobalFunction, regIndex, 0xF0);
+ 
+ struct CClassFunction : CBaseFunction
+ {
+@@ -145,12 +149,12 @@ struct CClassFunction : CBaseFunction
+         return memory;
+     }
+ 
+-    CClass* parent;    // B0
+-    uint32_t regIndex; // B8
++    CClass* parent;    // F0
++    uint32_t regIndex; // F8
+ };
+-RED4EXT_ASSERT_SIZE(CClassFunction, 0xC0);
+-RED4EXT_ASSERT_OFFSET(CClassFunction, parent, 0xB0);
+-RED4EXT_ASSERT_OFFSET(CClassFunction, regIndex, 0xB8);
++RED4EXT_ASSERT_SIZE(CClassFunction, 0x100);
++RED4EXT_ASSERT_OFFSET(CClassFunction, parent, 0xF0);
++RED4EXT_ASSERT_OFFSET(CClassFunction, regIndex, 0xF8);
+ 
+ struct CClassStaticFunction : CClassFunction
+ {
+@@ -174,14 +178,14 @@ struct CClassStaticFunction : CClassFunction
+         return memory;
+     }
+ };
+-RED4EXT_ASSERT_SIZE(CClassStaticFunction, 0xC0);
++RED4EXT_ASSERT_SIZE(CClassStaticFunction, 0x100);
+ 
+ struct CScriptedFunction : CBaseFunction
+ {
+-    CClass* parent; // B0
++    CClass* parent; // F0
+ };
+-RED4EXT_ASSERT_SIZE(CScriptedFunction, 0xB8);
+-RED4EXT_ASSERT_OFFSET(CScriptedFunction, parent, 0xB0);
++RED4EXT_ASSERT_SIZE(CScriptedFunction, 0xF8);
++RED4EXT_ASSERT_OFFSET(CScriptedFunction, parent, 0xF0);
+ } // namespace RED4ext
+ 
+ #ifdef RED4EXT_HEADER_ONLY
+diff --git a/include/RED4ext/Scripting/Stack-inl.hpp b/include/RED4ext/Scripting/Stack-inl.hpp
+index d5f3c6ab..77a2e4ec 100644
+--- a/include/RED4ext/Scripting/Stack-inl.hpp
++++ b/include/RED4ext/Scripting/Stack-inl.hpp
+@@ -5,6 +5,7 @@
+ #endif
+ 
+ #include <bit>
++#include <cstring>
+ 
+ #include <RED4ext/Detail/AddressHashes.hpp>
+ #include <RED4ext/RTTISystem.hpp>
+@@ -66,4 +67,21 @@ RED4EXT_INLINE RED4ext::CStackFrame::CStackFrame(IScriptable* aContext, char* aC
+     paramFlags = 0;
+     currentParam = 0;
+     useDirectData = false;
++    isRoot = true;
++
++    // Same initialization as the game's call map constructor.
++    static UniversalRelocVtbl poolScriptVtbl(Detail::AddressHashes::Memory_PoolScript_vtbl);
++    std::memset(unk68, 0, sizeof(unk68));
++    *reinterpret_cast<uint32_t*>(&unk68[0x20]) = 0xFFFFFFFF;
++    *reinterpret_cast<uintptr_t*>(&unk68[0x28]) = reinterpret_cast<uintptr_t>(static_cast<uintptr_t*>(poolScriptVtbl));
++
++    unk98 = unk68;
++    unkA0 = 0;
++}
++
++RED4EXT_INLINE RED4ext::CStackFrame::~CStackFrame()
++{
++    using func_t = void (*)(CStackFrame*);
++    static UniversalRelocFunc<func_t> dtor(Detail::AddressHashes::CStackFrame_dtor);
++    dtor(this);
+ }
+diff --git a/include/RED4ext/Scripting/Stack.hpp b/include/RED4ext/Scripting/Stack.hpp
+index df87f6f1..b62cf3ea 100644
+--- a/include/RED4ext/Scripting/Stack.hpp
++++ b/include/RED4ext/Scripting/Stack.hpp
+@@ -112,6 +112,11 @@ RED4EXT_ASSERT_OFFSET(CScriptStack, type, 0x40);
+ struct CStackFrame
+ {
+     CStackFrame(IScriptable* aContext, char* aCode, void* aUnk = nullptr);
++    ~CStackFrame();
++
++    // Root frames point to their own call map (unk98 -> unk68), so they can't be copied.
++    CStackFrame(const CStackFrame&) = delete;
++    CStackFrame& operator=(const CStackFrame&) = delete;
+ 
+     char* code;              // 00
+     CBaseFunction* func;     // 08 - For scripted functions
+@@ -128,6 +133,11 @@ struct CStackFrame
+     uint16_t paramFlags;     // 60
+     uint8_t currentParam;    // 62
+     bool useDirectData;      // 63 - If set the result param is not used, preventing an extra copy of the result
++    bool isRoot;             // 64 - Set when the frame has no parent (2.5)
++    uint8_t unk65[3];        // 65
++    uint8_t unk68[0x30];     // 68 - HashMap (PoolScript), owned by the root frame (2.5)
++    void* unk98;             // 98 - Points to unk68 of the root frame, inherited by child frames (2.5)
++    uint8_t unkA0;           // A0
+ 
+     void Step()
+     {
+@@ -139,7 +149,11 @@ struct CStackFrame
+         return (paramFlags & (1 << currentParam)) != 0;
+     }
+ };
+-RED4EXT_ASSERT_SIZE(CStackFrame, 0x68);
++RED4EXT_ASSERT_SIZE(CStackFrame, 0xA8);
++RED4EXT_ASSERT_OFFSET(CStackFrame, isRoot, 0x64);
++RED4EXT_ASSERT_OFFSET(CStackFrame, unk68, 0x68);
++RED4EXT_ASSERT_OFFSET(CStackFrame, unk98, 0x98);
++RED4EXT_ASSERT_OFFSET(CStackFrame, unkA0, 0xA0);
+ } // namespace RED4ext
+ 
+ #ifdef RED4EXT_HEADER_ONLY
